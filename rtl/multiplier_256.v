@@ -16,11 +16,13 @@ module multiplier_256(
     reg [255:0] temp_reg1;
     reg [255:0] temp_reg2;
 
-    reg  [2:0]   state;
+    reg          state;
     reg  [15:0]  mux;
     reg  [511:0] result [0:15];
     
     reg  [4:0]  count;
+    reg  [3:0]  count_result;
+    
     reg  [31:0] out_par1 [0:7];
     reg  [47:0] out_par2 [0:7];
     
@@ -268,15 +270,12 @@ module multiplier_256(
                 1 : begin
                         if (count > 20) begin
                             out     <= result[15];
-                            state   <= 2;
+                            done    <= 1;
+                            state   <= 0;
                         end
                         else begin
                             count   <= count + 1;
                         end
-                    end
-                2 : begin
-                        done    <= 1;
-                        state   <= 0;
                     end
             endcase
         end
@@ -284,10 +283,19 @@ module multiplier_256(
     
     always @ (posedge clk)
     begin
+        if (reset) begin
+            count_result    <= 0;
+        end
         if (count > 4 && count < 21) begin
             case (count)
-                5 : result[0]   <= acc4_result;
-                default : result[count-5]   <= (result[count-6] >> 16) + acc4_result;
+                5 : begin
+                        result[0]       <= acc4_result;
+                        count_result    <= 0;
+                    end
+                default : begin
+                              result[count_result + 1]   <= (result[count_result] >> 16) + acc4_result;
+                              count_result    <= count_result + 1;
+                          end
             endcase
         end
     end
