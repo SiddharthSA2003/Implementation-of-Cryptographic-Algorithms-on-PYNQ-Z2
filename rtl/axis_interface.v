@@ -53,7 +53,7 @@ module axis_interface(
     wire         chunk_div_data_valid;
     wire         chunk_div_last_byte;
     
-    assign s_axis_ready = (crypto_data_valid == 1);
+    assign s_axis_ready = (encryp_decryp) ? 1'b1 : (crypto_data_valid == 1);
     
     localparam  ENCRYP = 1'b0,
                 DECRYP = 1'b1;
