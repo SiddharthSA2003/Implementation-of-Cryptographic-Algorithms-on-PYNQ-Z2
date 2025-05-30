@@ -14,19 +14,18 @@ module crypto_top(
     wire [255:0] private_key;
     wire         private_key_valid;
     
-    //wire [254:0] mont_data_Rx;
-    //wire [254:0] mont_data_Rz;
-    wire [254:0] mont_data_out;
+    wire [254:0] mont_data_Rx;
+    wire [254:0] mont_data_Rz;
     wire         mont_data_valid;
     
-    //wire [254:0] inv_inverse;
-    //wire         inv_data_valid;
+    wire [254:0] inv_inverse;
+    wire         inv_data_valid;
     
-    //wire [511:0] mul_out;
-    //wire         mul_data_valid;
+    wire [511:0] mul_out;
+    wire         mul_data_valid;
     
-    //wire [254:0] mod_data_out;
-    //wire         mod_data_valid;
+    wire [254:0] mod_data_out;
+    wire         mod_data_valid;
     
     private_key_gen key_top(
         .key_clk            (crypto_clk),
@@ -41,11 +40,12 @@ module crypto_top(
         .mont_reset         (crypto_reset),
         .mont_valid         (private_key_valid),
         .mont_data_in       (private_key),
-        .mont_data_out      (mont_data_out),
+        .Rx                 (mont_data_Rx),
+        .Rz                 (mont_data_Rz),
         .mont_data_valid    (mont_data_valid)
         );
     
-    /*mod_inverse mod_inv(
+    mod_inverse mod_inv(
         .inv_clk            (crypto_clk),
         .inv_reset          (crypto_reset),
         .inv_valid          (mont_data_valid),
@@ -71,7 +71,7 @@ module crypto_top(
         .A                  (mul_out),
         .result             (mod_data_out),
         .done               (mod_data_valid)
-        );*/
+        );
     
     always @ (posedge crypto_clk)
     begin
@@ -83,8 +83,8 @@ module crypto_top(
             if (private_key_valid) begin
                 crypto_data_valid   <= 0;
             end
-            else if (mont_data_valid) begin
-                crypto_data_out     <= mont_data_out;
+            else if (mod_data_valid) begin
+                crypto_data_out     <= mod_data_out;
                 crypto_data_valid   <= 1;
             end
         end
