@@ -32,7 +32,6 @@ module double_add #(
     reg [WIDTH:0] XZ_plus;
     reg [WIDTH:0] XZ_minus;
     reg [WIDTH:0] XZ;
-    reg [WIDTH:0] XZ_temp;
     reg [WIDTH:0] X_plus_sq;
     reg [WIDTH:0] X_minus_sq;
     
@@ -46,6 +45,10 @@ module double_add #(
     reg [WIDTH:0]   F;
     reg [WIDTH+3:0] EE;
     reg [WIDTH+3:0] EE_temp;
+    
+    reg             comparator_pd;
+    reg             comparator_pa1;
+    reg             comparator_pa2;
     
     // Multiplier 256 registers
     reg           mul1_start;
@@ -124,19 +127,23 @@ module double_add #(
             XZ_plus         <= 0;
             XZ_minus        <= 0;
             XZ              <= 0;
-            XZ_temp         <= 0;
             X_plus_sq       <= 0;
             X_minus_sq      <= 0;
             
             X_out_pd        <= 0;
             Z_out_pd        <= 0;
             
+            mul1_start      <= 0;
             mul1_in1        <= 0;
             mul1_in2        <= 0;
+            
+            mod1_start      <= 0;
             mod1_in         <= 0;
             
             pd_state        <= 0;
             pd_done         <= 0;
+            
+            comparator_pd   <= 0;
             
             // Point Addition registers
             A               <= 0;
@@ -153,12 +160,17 @@ module double_add #(
             X_out_pa        <= 0;
             Z_out_pa        <= 0;
             
+            mul2_start      <= 0;
             mul2_in1        <= 0;
             mul2_in2        <= 0;
+            
+            mod2_start      <= 0;
             mod2_in         <= 0;
             
             pa_state        <= 0;
             pa_done         <= 0;
+            
+            comparator_pa1  <= 0;
         end
         else begin
             //=================================================================================
@@ -167,10 +179,9 @@ module double_add #(
             
             case (pd_state)
                 0 : begin
-
                         if (start) begin
+                            comparator_pd   <= (pd_X >= pd_Z);
                             XZ_plus         <= pd_X + pd_Z;
-                            XZ_minus        <= (pd_X > pd_Z) ? pd_X - pd_Z : pd_X + PRIME - pd_Z;
                             
                             pd_state        <= pd_state + 1;
                         end
@@ -181,6 +192,8 @@ module double_add #(
                 
                         mul1_start  <= 1;
                         
+                        XZ_minus    <= comparator_pd ? pd_X - pd_Z : pd_X + PRIME - pd_Z;
+                        
                         pd_state    <= pd_state + 1;
                     end
                 2 : begin
@@ -190,63 +203,82 @@ module double_add #(
                             mod1_in     <= mul1_result;
                     
                             mod1_start  <= 1;
+                            
+                            mul1_in1    <= XZ_minus;
+                            mul1_in2    <= XZ_minus;
+                
+                            mul1_start  <= 1;
                         
                             pd_state    <= pd_state + 1;
                         end
                     end
                 3 : begin
                         mod1_start  <= 0;
-                        
-                        mul1_in1    <= XZ_minus;
-                        mul1_in2    <= XZ_minus;
-                
-                        mul1_start  <= 1;
-                        
-                        pd_state    <= pd_state + 1;
-                    end
-                4 : begin
                         mul1_start  <= 0;
                         
-                        if (mul1_done) begin
-                            mod1_in     <= mul1_result;
+                        if (mod1_done) begin
+                            X_plus_sq   <= mod1_result;
                             
                             pd_state    <= pd_state + 1;
                         end
                     end
-                5 : begin
-                        if (mod1_done) begin
-                            X_plus_sq   <= mod1_result;
+                4 : begin
+                        if (mul1_done) begin
+                            mod1_in     <= mul1_result;
                             
                             mod1_start  <= 1;
                             
                             pd_state    <= pd_state + 1;
                         end
                     end
-                6 : begin
+                5 : begin
                         mod1_start  <= 0;
                         
                         if (mod1_done) begin
-                            X_minus_sq  <= mod1_result;
+                            X_minus_sq      <= mod1_result;
+                            
+                            mul1_in1        <= X_plus_sq;
+                            mul1_in2        <= mod1_result;
+                
+                            mul1_start      <= 1;
+                            
+                            comparator_pd   <= (X_plus_sq > mod1_result);
+                            
+                            pd_state        <= pd_state + 1;
+                        end
+                    end
+                6 : begin
+                        mul1_start  <= 0;
+                        
+                        XZ          <= comparator_pd ? X_plus_sq - X_minus_sq : X_plus_sq + PRIME - X_minus_sq;
+                        
+                        if (mul1_done) begin
+                            mod1_in     <= mul1_result;
+                    
+                            mod1_start  <= 1;
+                            
+                            mul1_in1    <= XZ;
+                            mul1_in2    <= a;
+                
+                            mul1_start  <= 1;
                             
                             pd_state    <= pd_state + 1;
                         end
                     end
                 7 : begin
-                        mul1_in1    <= X_plus_sq;
-                        mul1_in2    <= X_minus_sq;
-                
-                        mul1_start  <= 1;
-                
-                        XZ          <= (X_plus_sq > X_minus_sq) ? X_plus_sq - X_minus_sq : X_plus_sq + PRIME - X_minus_sq;
+                        mul1_start  <= 0;
+                        mod1_start  <= 0;
                         
-                        pd_state    <= pd_state + 1;
+                        if (mod1_done) begin
+                            X_out_pd    <= mod1_result;
+                            
+                            pd_state    <= pd_state + 1;
+                        end
                     end
                 8 : begin
-                        mul1_start  <= 0;
-                        
                         if (mul1_done) begin
                             mod1_in     <= mul1_result;
-                    
+                            
                             mod1_start  <= 1;
                             
                             pd_state    <= pd_state + 1;
@@ -255,60 +287,27 @@ module double_add #(
                 9 : begin
                         mod1_start  <= 0;
                         
-                        mul1_in1    <= XZ;
-                        mul1_in2    <= a;
-                
-                        mul1_start  <= 1;
-                        
-                        pd_state    <= pd_state + 1;
+                        if (mod1_done) begin
+                            mul1_in1    <= mod1_result + X_minus_sq;
+                            mul1_in2    <= XZ;
+                    
+                            mul1_start  <= 1;
+                            
+                            pd_state    <= pd_state + 1;
+                        end
                     end
                10 : begin
                         mul1_start  <= 0;
                         
                         if (mul1_done) begin
                             mod1_in     <= mul1_result;
+                    
+                            mod1_start  <= 1;
                             
                             pd_state    <= pd_state + 1;
                         end
                     end
                11 : begin
-                        if (mod1_done) begin
-                            X_out_pd    <= mod1_result;
-                            
-                            mod1_start  <= 1;
-                            
-                            pd_state    <= pd_state + 1;
-                        end
-                    end
-               12 : begin
-                        mod1_start  <= 0;
-                        
-                        if (mod1_done) begin
-                            XZ_temp     <= mod1_result + X_minus_sq;
-                            
-                            pd_state    <= pd_state + 1;
-                        end
-                    end
-               13 : begin
-                        mul1_in1    <= XZ_temp;
-                        mul1_in2    <= XZ;
-                    
-                        mul1_start  <= 1;
-                        
-                        pd_state    <= pd_state + 1;
-                    end
-               14 : begin
-                        mul1_start  <= 0;
-                        
-                        if (mul1_done) begin
-                            mod1_in     <= mul1_result;
-                    
-                            mod1_start  <= 1;
-                            
-                            pd_state    <= pd_state + 1;
-                        end
-                    end
-               15 : begin
                         mod1_start  <= 0;
                         
                         if (mod1_done) begin
@@ -319,6 +318,7 @@ module double_add #(
                             pd_state    <= 0;
                         end
                     end
+                default : pd_state    <= 0;
             endcase
             
             //=================================================================================
@@ -329,15 +329,22 @@ module double_add #(
                 0 : begin
 
                         if (start) begin
-                            A           <= XP + ZP;
-                            B           <= (XP > ZP) ? XP - ZP : XP + PRIME - ZP;
-                            C           <= XQ + ZQ;
-                            D           <= (XQ > ZQ) ? XQ - ZQ : XQ + PRIME - ZQ;
+                            A               <= XP + ZP;
+                            C               <= XQ + ZQ;
+                            
+                            comparator_pa1  <= (XP >= ZP);
+                            comparator_pa2  <= (XQ >= ZQ);
                 
-                            pa_state    <= pa_state + 1;
+                            pa_state        <= pa_state + 1;
                         end
                     end
                 1 : begin
+                        B           <= comparator_pa1 ? XP - ZP : XP + PRIME - ZP;
+                        D           <= comparator_pa2 ? XQ - ZQ : XQ + PRIME - ZQ;
+                        
+                        pa_state    <= pa_state + 1;
+                    end
+                2 : begin
                         mul2_in1    <= A;
                         mul2_in2    <= D;
                         
@@ -345,7 +352,7 @@ module double_add #(
                         
                         pa_state    <= pa_state + 1;
                     end
-                2 : begin
+                3 : begin
                         mul2_start  <= 0;
                         
                         if (mul2_done) begin
@@ -353,31 +360,27 @@ module double_add #(
                     
                             mod2_start  <= 1;
                             
+                            mul2_in1    <= C;
+                            mul2_in2    <= B;
+                
+                            mul2_start  <= 1;
+                            
                             pa_state    <= pa_state + 1;
                         end
                     end
-                3 : begin
-                        mod2_start  <= 0;
-                        
-                        mul2_in1    <= C;
-                        mul2_in2    <= B;
-                
-                        mul2_start  <= 1;
-                        
-                        pa_state    <= pa_state + 1;
-                    end
                 4 : begin
                         mul2_start  <= 0;
+                        mod2_start  <= 0;
                         
-                        if (mul2_done) begin
-                            mod2_in     <= mul2_result;
+                        if (mod2_done) begin
+                            DA          <= mod2_result;
                             
                             pa_state    <= pa_state + 1;
                         end
                     end
                 5 : begin
-                        if (mod2_done) begin
-                            DA          <= mod2_result;
+                        if (mul2_done) begin
+                            mod2_in     <= mul2_result;
                             
                             mod2_start  <= 1;
                             
@@ -388,10 +391,11 @@ module double_add #(
                         mod2_start  <= 0;
                         
                         if (mod2_done) begin
-                            E           <= DA + mod2_result;
-                            F           <= (DA > mod2_result) ? DA - mod2_result : DA + PRIME - mod2_result;
+                            E               <= DA + mod2_result;
                             
-                            pa_state    <= pa_state + 1;
+                            comparator_pa1  <= (DA >= mod2_result);
+                            
+                            pa_state        <= pa_state + 1;
                         end
                     end
                 7 : begin
@@ -399,6 +403,8 @@ module double_add #(
                         mul2_in2    <= E;
                         
                         mul2_start  <= 1;
+                        
+                        F           <= comparator_pa1 ? DA - mod2_result : DA + PRIME - mod2_result;
                         
                         pa_state    <= pa_state + 1;
                     end
@@ -410,56 +416,49 @@ module double_add #(
                     
                             mod2_start  <= 1;
                             
+                            mul2_in1    <= F;
+                            mul2_in2    <= F;
+                        
+                            mul2_start  <= 1;
+                            
                             pa_state    <= pa_state + 1;
                         end
                     end
                 9 : begin
+                        mul2_start  <= 0;
                         mod2_start  <= 0;
                         
-                        mul2_in1    <= F;
-                        mul2_in2    <= F;
-                        
-                        mul2_start  <= 1;
-                        
-                        pa_state    <= pa_state + 1;
-                    end
-               10 : begin
-                        mul2_start  <= 0;
-                        
-                        if (mul2_done) begin
-                            mod2_in     <= mul2_result;
-                            
-                            pa_state    <= pa_state + 1;
-                        end
-                    end
-               11 : begin
                         if (mod2_done) begin
                             EE          <= mod2_result;
                             
-                            mod2_start  <= 1;
-                            
                             pa_state    <= pa_state + 1;
                         end
                     end
-               12 : begin
-                        mod2_start  <= 0;
-                        
-                        if (mod2_done) begin
-                            Z_out_pa    <= mod2_result;
+               10 : begin
+                        if (mul2_done) begin
+                            mod2_in     <= mul2_result;
+                            
+                            mod2_start  <= 1;
                             
                             EE_temp     <= (EE << 3) + EE;
                             
                             pa_state    <= pa_state + 1;
                         end
                     end
-               13 : begin
-                        mod2_in     <= EE_temp;
-                    
-                        mod2_start  <= 1;
+               11 : begin
+                        mod2_start  <= 0;
+                        
+                        if (mod2_done) begin
+                            Z_out_pa    <= mod2_result;
                             
-                        pa_state    <= pa_state + 1;
+                            mod2_in     <= EE_temp;
+                    
+                            mod2_start  <= 1;
+                            
+                            pa_state    <= pa_state + 1;
+                        end
                     end
-               14 : begin
+               12 : begin
                         mod2_start  <= 0;
                         
                         if (mod2_done) begin
@@ -470,6 +469,7 @@ module double_add #(
                             pa_state    <= 0;
                         end
                     end
+                default : pa_state    <= 0;
             endcase
             
             if (pa_done && pd_done) begin
