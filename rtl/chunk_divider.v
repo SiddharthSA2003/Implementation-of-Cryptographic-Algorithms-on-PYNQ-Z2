@@ -63,7 +63,7 @@ module chunk_divider(
                                 sending         <= 1;
                             end
 
-                            else if (sending & m_axis_ready) begin
+                            else if (sending & m_axis_ready == 1) begin
                                 if (~public_key_sent) begin
                                     chunk_div_data_out    <= public_key_reg[word_index*32 - 1 -: 32];
                                     chunk_div_data_valid  <= 1;
@@ -132,16 +132,16 @@ module chunk_divider(
                                 sending     <= 1;
                             end
 
-                            else if (sending & m_axis_ready) begin
+                            else if (sending) begin
                                 chunk_div_data_out    <= data_buffer[word_index*32 -1 -: 32];
                                 chunk_div_data_valid  <= 1;
                 
-                                if (word_index == 1) begin
+                                if (word_index == 1 & m_axis_ready == 1) begin
                                     sending             <= 0;
                                     chunk_div_last_byte <= 1;
                                     word_index          <= 16;
                                 end
-                                else begin
+                                else if (m_axis_ready == 1) begin
                                     word_index <= word_index - 1;
                                 end
                             end
