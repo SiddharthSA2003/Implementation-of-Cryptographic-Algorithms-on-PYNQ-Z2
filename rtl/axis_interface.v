@@ -12,9 +12,9 @@ module axis_interface(
     
     // Master i/f
     input  wire         m_axis_ready,
-    output  reg         m_axis_valid,
-    output  reg [31:0]  m_axis_data,            // MSB is transmitted first
-    output  reg         m_axis_last
+    output wire         m_axis_valid,
+    output wire [31:0]  m_axis_data,            // MSB is transmitted first
+    output wire         m_axis_last
     );
     
     reg          chacha_valid;
@@ -217,18 +217,7 @@ module axis_interface(
         end
     end
     
-    always @ (posedge axis_clk)
-    begin
-        if (~axis_reset_n) begin
-            m_axis_valid    <= 0;
-            m_axis_last     <= 0;
-            m_axis_data     <= 0;
-        end
-        
-        else begin
-            m_axis_valid    <= chunk_div_data_valid;
-            m_axis_last     <= chunk_div_last_byte;
-            m_axis_data     <= chunk_div_data_out;
-        end
-    end
+    assign m_axis_valid = chunk_div_data_valid;
+    assign m_axis_last  = chunk_div_last_byte;
+    assign m_axis_data  = chunk_div_data_out;
 endmodule
