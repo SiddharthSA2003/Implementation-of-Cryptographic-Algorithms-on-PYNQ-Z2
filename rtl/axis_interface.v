@@ -53,7 +53,7 @@ module axis_interface(
     wire         chunk_div_data_valid;
     wire         chunk_div_last_byte;
     
-    assign s_axis_ready = (encryp_decryp) ? 1'b1 : (crypto_data_valid == 1);
+    assign s_axis_ready = (encryp_decryp) ? 1'b1 : (crypto_data_valid == 1 & chacha_data_out_val == 1);
     
     localparam  ENCRYP = 1'b0,
                 DECRYP = 1'b1;
@@ -75,7 +75,6 @@ module axis_interface(
     crypto_top crypt(
         .crypto_clk             (axis_clk),
         .crypto_reset           (~axis_reset_n),
-        .top_ready              (m_axis_ready),
         .crypto_data_out        (crypto_data_out),
         .crypto_data_valid      (crypto_data_valid)
         );
@@ -117,7 +116,7 @@ module axis_interface(
             chacha_key              <= 0;
             chacha_data_in          <= 0;
             chacha_data_in_valid    <= 0;
-            chacha_data_out_val     <= 0;
+            chacha_data_out_val     <= 1;
             chacha_nonce            <= 0;
             chacha_counter          <= 0;
             
