@@ -34,6 +34,7 @@ module double_add #(
     reg [WIDTH:0] XZ;
     reg [WIDTH:0] X_plus_sq;
     reg [WIDTH:0] X_minus_sq;
+    reg [WIDTH:0] pd_x_temp;
     
     reg [WIDTH:0]   A;
     reg [WIDTH:0]   B;
@@ -143,6 +144,8 @@ module double_add #(
             pd_state        <= 0;
             pd_done         <= 0;
             
+            pd_x_temp       <= 0;       
+            
             comparator_pd   <= 0;
             
             // Point Addition registers
@@ -187,16 +190,21 @@ module double_add #(
                         end
                     end
                 1 : begin
+                        pd_x_temp   <= pd_X - pd_Z;
+                        
+                        pd_state    <= pd_state + 1;
+                    end
+                2 : begin
                         mul1_in1    <= XZ_plus;
                         mul1_in2    <= XZ_plus;
                 
                         mul1_start  <= 1;
                         
-                        XZ_minus    <= comparator_pd ? pd_X - pd_Z : pd_X + PRIME - pd_Z;
+                        XZ_minus    <= comparator_pd ? pd_x_temp : pd_x_temp + PRIME;
                         
                         pd_state    <= pd_state + 1;
                     end
-                2 : begin
+                3 : begin
                         mul1_start  <= 0;
                         
                         if (mul1_done) begin
@@ -212,7 +220,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-                3 : begin
+                4 : begin
                         mod1_start  <= 0;
                         mul1_start  <= 0;
                         
@@ -222,7 +230,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-                4 : begin
+                5 : begin
                         if (mul1_done) begin
                             mod1_in     <= mul1_result;
                             
@@ -231,7 +239,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-                5 : begin
+                6 : begin
                         mod1_start  <= 0;
                         
                         if (mod1_done) begin
@@ -242,12 +250,12 @@ module double_add #(
                 
                             mul1_start      <= 1;
                             
-                            comparator_pd   <= (X_plus_sq > mod1_result);
+                            comparator_pd   <= (X_plus_sq >= mod1_result);
                             
                             pd_state        <= pd_state + 1;
                         end
                     end
-                6 : begin
+                7 : begin
                         mul1_start  <= 0;
                         
                         XZ          <= comparator_pd ? X_plus_sq - X_minus_sq : X_plus_sq + PRIME - X_minus_sq;
@@ -265,7 +273,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-                7 : begin
+                8 : begin
                         mul1_start  <= 0;
                         mod1_start  <= 0;
                         
@@ -275,7 +283,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-                8 : begin
+                9 : begin
                         if (mul1_done) begin
                             mod1_in     <= mul1_result;
                             
@@ -284,7 +292,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-                9 : begin
+               10 : begin
                         mod1_start  <= 0;
                         
                         if (mod1_done) begin
@@ -296,7 +304,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-               10 : begin
+               11 : begin
                         mul1_start  <= 0;
                         
                         if (mul1_done) begin
@@ -307,7 +315,7 @@ module double_add #(
                             pd_state    <= pd_state + 1;
                         end
                     end
-               11 : begin
+               12 : begin
                         mod1_start  <= 0;
                         
                         if (mod1_done) begin
