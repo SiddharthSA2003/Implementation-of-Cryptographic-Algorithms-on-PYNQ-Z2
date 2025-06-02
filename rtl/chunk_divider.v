@@ -132,21 +132,21 @@ module chunk_divider(
                                 sending     <= 1;
                             end
 
-                            else if (sending) begin
+                            else if (sending & m_axis_ready) begin
                                 chunk_div_data_out    <= data_buffer[word_index*32 -1 -: 32];
                                 chunk_div_data_valid  <= 1;
                 
-                                if (word_index == 1 & m_axis_ready == 1) begin
+                                if (word_index == 1) begin
                                     sending             <= 0;
                                     chunk_div_last_byte <= 1;
                                     word_index          <= 16;
                                 end
-                                else if (m_axis_ready == 1) begin
+                                else begin
                                     word_index <= word_index - 1;
                                 end
                             end
             
-                            else begin
+                            else if (chunk_div_last_byte) begin
                                 chunk_div_last_byte     <= 0;
                                 chunk_div_data_valid    <= 0;
                             end
