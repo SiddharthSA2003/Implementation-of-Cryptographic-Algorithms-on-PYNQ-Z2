@@ -4,7 +4,6 @@ module crypto_top(
     // INPUT
     input wire          crypto_clk,
     input wire          crypto_reset,
-    input wire          top_ready,
     
     // OUTPUT
     output reg [254:0]  crypto_data_out,
@@ -16,6 +15,7 @@ module crypto_top(
     
     wire [254:0] mont_data_Rx;
     wire [254:0] mont_data_Rz;
+    wire [254:0] mont_data_out;
     wire         mont_data_valid;
     
     wire [254:0] inv_inverse;
@@ -30,7 +30,6 @@ module crypto_top(
     private_key_gen key_top(
         .key_clk            (crypto_clk),
         .key_reset          (crypto_reset),
-        .top_ready          (top_ready),
         .private_key        (private_key),
         .private_key_valid  (private_key_valid)
         );
@@ -80,7 +79,7 @@ module crypto_top(
             crypto_data_out     <= 0;
         end
         else begin
-            if (private_key_valid) begin
+            if (mul_data_valid) begin
                 crypto_data_valid   <= 0;
             end
             else if (mod_data_valid) begin
