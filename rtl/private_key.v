@@ -4,17 +4,17 @@ module private_key_gen(
     // INPUT
     input wire key_clk,
     input wire key_reset,
-    input wire top_ready,
     
     // OUTPUT
     output reg [255:0] private_key,
     output reg         private_key_valid
     );
     
-    reg [5:0] key_index;
-    reg       next_key;
+    reg [5:0]  key_index;
+    reg        next_key;
     
-    reg       key_state;
+    reg        key_state;
+    reg [25:0] key_count;
     
     always @ (posedge key_clk)
     begin
@@ -22,24 +22,25 @@ module private_key_gen(
             next_key    <= 1;
             key_index   <= 0;
             key_state   <= 0;
+            key_count   <= 0;
         end
         else begin
             case (key_state)
                 0 : begin
-                        if (private_key_valid) begin
-                            next_key    <= 0;
-                        end
+                        next_key    <= 0;
                     
-                        if (top_ready) begin
+                        if (key_count == 26'h3ffffff) begin
+                            key_count   <= 0;
                             key_state   <= 1;
+                        end
+                        else begin
+                            key_count   <= key_count + 1;
                         end
                     end
                 1 : begin
-                        if (~top_ready) begin
-                            next_key    <= 1;
-                            key_index   <= key_index + 1;
-                            key_state   <= 0;
-                        end
+                        next_key    <= 1;
+                        key_index   <= key_index + 1;
+                        key_state   <= 0;
                     end
             endcase
         end
@@ -52,10 +53,8 @@ module private_key_gen(
             private_key_valid   <= 0;
         end
         else begin
-            private_key_valid   <= 0;
-            
             if (next_key) begin
-            private_key_valid   <= 1;
+                private_key_valid   <= 1;
             
             case (key_index)
                 0 : private_key <= 256'hebcdf67adb1b17d84f7844223fa488fa46371abb42f2afc08b68f0a9a71a859f;
@@ -123,6 +122,9 @@ module private_key_gen(
                62 : private_key <= 256'h5814f399da90c5bba5d40503bca98bddd40e8084267e0bd7dac95b0f45654563;
                63 : private_key <= 256'he8c0b7b1ea50ffdcb4d3acb7671ed3240651d138752dd648bab24ac61fa74367;
             endcase
+            end
+            else begin
+                private_key_valid   <= 0;
             end
         end
     end
